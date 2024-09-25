@@ -1,0 +1,103 @@
+---
+title: "Project 1"
+author: "Tatum Bowen"
+date: 'Due: 03/10/2024'
+output:
+  pdf_document: default
+  word_document: default
+bibliography: references.bib
+nocite: '@*'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lattice)
+library(ggplot2)
+```
+
+# An Analysis of Mortality and its Causes for the Female and Male Populations in Multiple Regions Throughout the U.S.
+
+## Abstract
+This a study about the data set USMortality looking into the relationship between male and female mortality rates for different causes of death along with the relationship between the different regions' mortality rates. The primary objective was to use different modes of data visualization in order to arrive at a conclusion regarding the analysis of the data set; this was accomplished as there were four different methods of plotting and data mapping used throughout this study. Furthermore, two conclusions were reached: 1) overall, men have a higher mortality rate than women regardless of the cause, 2) mortality rates remain consistent across every region of the US, with little to no fluctuation. 
+
+## Introduction
+The motivations behind the study and analysis of the data set USMortality were primarily focused on the number and relationship of the variables. This data set provided an excellent opportunity to look into various methods of displaying and comparing data, which was the main goal I wanted to accomplish. Furthermore, this data set contained information I found interesting and easy to engage with, making the analysis of the plots more exciting. The objectives of the study, beyond being able to experiment with new plotting methods, were to compare causes of mortality and mortality rates to a third variable. One element of the analysis focuses on the effects of being male or female; I used a point graph along with a linear regression model to visualize this comparison. The second part of my analysis works to compare the regions and this is done use a heatmap and a faceted group of plots. The information to learn how to do the plots came from [RPubs](https://rpubs.com/xliusufe/ch7).
+
+## Data
+The data set I used in my study was USMortality. It has six variables (region, status, sex, cause, rate, and standard error) that are recorded for 400 observations. The variables that are the focus of this study are region, sex, cause, and rate. The cause refers to the cause of death, such as suicide, cancer, and other large contributors to mortality; the rate refers to the death rate per 100,000 people in a population; the region has ten subsections representing ten regions in the U.S.; and sex has two levels - male and female. There are some limitations to the data regarding the number of observations; since it is a small sample size, it is more difficult to observe relationships, it also introduces more uncertainty in the data because there may not be an accurate representation of the population in the sample size.
+The summary of the data set can be seen here: `r summary(USMortality)`.
+
+
+## Analysis and Results (Male vs. Female)
+```{r male_female_comparison, fig.cap ="A comaprison of the rate or mortality for particular causes between males and females in the US.", echo=FALSE}
+ggplot(USMortality, aes(x = Rate, y = Cause, color = Sex)) + geom_jitter(width = .2) + labs(title = "Cause of Death vs. Mortality Taking into Account Sex", x = "Mortality Rate", y = "Cause of Death", color = "Sex")
+```
+
+```{r regression_models, fig.cap="A regression model to better compare the difference in mortality for different causes between males and females.", echo=FALSE}
+fit_regression_model <- function(cause) {
+
+  cause_data <- USMortality[USMortality$Cause == cause, ]
+  
+  model <- lm(Rate ~ Sex, data = cause_data)
+  
+  return(model)
+}
+
+causes <- unique(USMortality$Cause)
+
+models <- lapply(causes, fit_regression_model)
+
+plots <- lapply(seq_along(models), function(i) {
+  coef <- coef(models[[i]])
+  
+  data <- data.frame(Sex = c("Female", "Male"), Rate = coef[1] + coef[2] * c(0, 1))
+  
+  ggplot(USMortality[USMortality$Cause == causes[i], ], aes(x = Sex, y = Rate)) +
+    geom_jitter(width = .2) +
+    geom_smooth(data = data, aes(group = 1), method = "lm", se = FALSE) +
+    labs(title = paste("Cause of Death:", causes[i]),
+         x = "Sex", y = "Mortality Rate")
+})
+
+plots
+```
+The first element of analysis is comparing the difference in mortality rates for males and females with regards to different causes. This is displayed in a couple different ways, each will be discussed separately in order to land on a conclusion for the relationships between the variables. In Figure \@ref{fig:male_female_comparison}, there is a display of three variables in one plot. Causes is on the y-axis and Mortality Rate is on the x-axis, while the male or female element is displayed by different colored points. In this visualization, there are no extremely obvious differences between the mortality rates of men and women, but it can be observed that the men do have remarkably higher mortality rates when it comes to heart disease and cancer. It seems the most obvious data to be observed from Figure \@ref{fig:male_female_comparison} is that cancer and heart disease have a larger mortality rate than many other causes, but this was not the objective of this analysis. 
+To further try and reach the objective of this analysis, there is a second visualization used; this is a group of plots that demonstrate a linear regression. A linear regression with this data may seem a bit trivial, but it does a better job of showing the differences in mortality rate between men and women than Figure \@ref{fig:male_female_comparison} did. The relationship for the linear regression can be observed: `r fit_regression_model(USMortality$Cause)`. 
+In Figure \@ref{fig:regression_models}, there is a plot for each cause that compares the mortality rate of that cause between men and women. The linear regression line can be observed in each plot as well; if I wanted to further analyze the relationship between mortality and sex, I could calculate the slope of the linear regression line for each cause. But for this analysis, the visual of the line served the purpose of demonstrating that men, overall, have a higher mortality rate than women regardless of the cause. It is obvious that the cause must come into play in some ways, as the difference between men and women is not consistent for every cause. It is also not always true, in the case of Alzheimers, women have a higher mortality rate than men. 
+Overall, Figure \@ref{fig:regression_models} allows for a rather definitive result, given the data and its potential limitations, that men have a higher mortality rate than women regardless of cause of death. 
+
+
+## Analysis and Results (Regionally)
+```{r regional_heatmap, fig.cap ="A heatmap examining the mortality rates of particular causes from a regional standpoint.", echo=FALSE}
+region_names <- c("Boston", "New York", "Philadelphia", "Atlanta", "Chicago", "Dallas", "Kansas City", "Denver", "San Francisco", "Seattle") 
+
+USRegionalMortality$Region <- factor(USRegionalMortality$Region, levels = unique(USRegionalMortality$Region), labels = region_names)
+
+
+ggplot(USRegionalMortality, aes(x = Cause, y = Region, fill = Rate)) +
+  geom_tile() +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Mortality Rates by Region and Cause",
+       x = "Cause", y = "Region", fill = "Mortality Rate (per 100,000)") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r faceted_regions, fig.cap="Another way to compare the the causes and mortality rates to reenforce the previously observed pattern.", echo=FALSE}
+ggplot(USRegionalMortality, aes(x = Cause, y = Rate)) +
+  geom_point() +
+  facet_wrap(~ Region, scales = "free_y", ncol = 2) +
+  labs(title = "Mortality Rate by Cause and Region",
+       x = "Cause", y = "Mortality Rate (per 100,000)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text = element_text(size = 7, face = "bold"), plot.margin = unit(c(0.0, 0.0, 0.0, 0.0), "cm"))
+```
+The second part of the analysis was to look at how mortality rates per cause changes regionally; this, similarly to the first part of analysis, is shown with two different methods. Firstly, Figure \@ref{fig:regional_heatmap} uses a heat map to show the mortality rate for each cause regionally. This method of displaying data is not especially helpful in providing insight to the relationship between mortality rates and regions, but like Figure \@ref{fig:male_female_comparison}, it highlights how high the mortality rates are for cancer and heart disease.
+The second visualization, Figure \@ref{fig:faceted_regions}, more clearly demonstrates the mortality rate for each cause per region. Although both plots demonstrate the same relationship, the faceted plots show the relationship much better. Unfortunately, neither plot allows for a definite relationship between the mortality rates of causes in each of the different regions. Each region has a very similar mortality rate for every single one of the causes. One conclusion that can be made from this observation is that region has no role in the mortality rate; if a large enough sample is collected from any region, then the mortality rate should remain consistent, or nearly so, across every region. 
+
+## Conclusion
+My primary objective in this study was to be able to learn different ways to present data visually, which was very much accomplished; I was able to learn about heatmaps and faceted plots and how to create multiple plots based on a linear regression made with the variables from the dataset. The objectives for analyzing the dataset were also completed. Using Figure \@ref{fig:male_female_comparison} and Figure \@ref{fig:regression_models}, it can be determined that men having a higher mortality rate than women, overall, but not in every case. This could also be further investigated by looking into the ages of mortality for the males and females and the population of men and women at different ages. For example, if men do not live as long as women, that might be the reason the mortality rate for Alzheimer is higher for women. Using Figure \@ref{fig:regional_heatmap} and Figure \@ref{fig:faceted_regions}, it can be concluded that mortality rate for the different causes is consistent across the different regions. This could be further analyzed by splitting the regions by status, a varible that stated whether the person was rural or urban, and then looking at the mortality rates for the rural and urban populations in each region. 
+
+## References
+
+
+
+
